@@ -4,16 +4,19 @@ public class CameraAnimate : MonoBehaviour
 {
     [SerializeField]
     private GameObject _player;
-    private PlayerControl _controller;
+
+    private Vector3 _anchor;
 
     void Start()
     {
-        _controller = _player.GetComponent<PlayerControl>();
+        
     }
 
 
     void Update()
     {
-        transform.position = Vector3.Slerp(transform.position, _controller.cameraTarget, .1f);
+        _anchor = _player.transform.position;
+        _anchor.y += .5f;
+        transform.position = Vector3.Slerp(transform.position, _anchor, .1f);
     }
 }

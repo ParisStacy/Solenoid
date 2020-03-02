@@ -25,13 +25,9 @@ public class PlayerControl : MonoBehaviour {
 
     //Values//
     private float _speed, _xMove, _zMove;
-    private bool _grounded, _jumping, _crouching, _canUncrouch;
+    private bool _grounded, _canUncrouch, _jumping, _crouching;
     private Vector3 _moveDirection;
     private RaycastHit slopeHit;
-
-    [HideInInspector]
-    public Vector3 cameraTarget;
-
 
     void Awake() {
         rb = this.GetComponent<Rigidbody>();
@@ -45,22 +41,14 @@ public class PlayerControl : MonoBehaviour {
         _zMove = Input.GetAxis("Vertical");
 
         _jumping = Input.GetButton("Jump");
-
         if (Input.GetButtonDown("Crouch")) {
-            if (_crouching) {
-                if (_canUncrouch) _crouching = false;
-            } else {
-                _crouching = true;
-            }
+            _crouching = !_crouching;
         }
 
         //Condition Checks//
         RaycastHit hit;
         _grounded = (Physics.Raycast(transform.position, Vector3.down, out hit, groundedRay));
-        _canUncrouch = !(Physics.SphereCast(transform.position, .45f, Vector3.up, out hit, 1f));
-
-        cameraTarget = transform.position;
-        cameraTarget.y += _cameraTargetOffset;
+        _canUncrouch = !(Physics.Raycast(transform.position, Vector3.up, out hit, 1.5f));
 
     }
 
@@ -159,14 +147,5 @@ public class PlayerControl : MonoBehaviour {
         }
 
 
-    }
-    private float _cameraTargetOffset {
-        get {
-            if (_crouching) {
-                return (_canUncrouch) ? .5f : .3f;
-            } else {
-                return .5f;
-            }
-        }
     }
 }
