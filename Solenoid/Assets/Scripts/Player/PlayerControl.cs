@@ -12,6 +12,8 @@ public class PlayerControl : MonoBehaviour {
     public float jumpForce;
     [Header("Physics")]
     public float gravity;
+    public float slopeLimit;
+    public float groundedRay = 1.1f;
 
     //State Enum//
     private enum PlayerStates { defaultMove, hanging, climbing };
@@ -19,14 +21,17 @@ public class PlayerControl : MonoBehaviour {
 
     //Components//
     private Rigidbody rb;
+    private CapsuleCollider cc;
 
     //Values//
     private float _speed, _xMove, _zMove;
     private bool _grounded, _canUncrouch, _jumping, _crouching;
     private Vector3 _moveDirection;
+    private RaycastHit slopeHit;
 
     void Awake() {
         rb = this.GetComponent<Rigidbody>();
+        cc = this.GetComponent<CapsuleCollider>();
         _currentState = PlayerStates.defaultMove;
     }
 
@@ -36,10 +41,13 @@ public class PlayerControl : MonoBehaviour {
         _zMove = Input.GetAxis("Vertical");
 
         _jumping = Input.GetButton("Jump");
+        if (Input.GetButtonDown("Crouch")) {
+            _crouching = !_crouching;
+        }
 
         //Condition Checks//
         RaycastHit hit;
-        _grounded = (Physics.Raycast(transform.position, Vector3.down, out hit, 1.1f));
+        _grounded = (Physics.Raycast(transform.position, Vector3.down, out hit, groundedRay));
         _canUncrouch = !(Physics.Raycast(transform.position, Vector3.up, out hit, 1.5f));
 
     }
@@ -66,10 +74,25 @@ public class PlayerControl : MonoBehaviour {
 
             float targetSpeed;
 
-            targetSpeed = walkSpeed;
+            if (_crouching) {
+                targetSpeed = sneakSpeed;
+            } else {
+                targetSpeed = walkSpeed;
+            }
+            
 
             _speed = Mathf.Lerp(_speed,targetSpeed,.5f);
         }
+
+
+        if (_crouching) {
+            cc.height = 1;
+            groundedRay = .6f;
+        } else {
+            cc.height = 2;
+            groundedRay = 1.1f;
+        }
+
 
         //Movement//
 
@@ -80,11 +103,16 @@ public class PlayerControl : MonoBehaviour {
         _moveDirection *= _speed;
 
         //Check for gravity and jump
+
         if (!_grounded) {
             yDir -= gravity * Time.deltaTime;
         } else {
             yDir = 0;
             if (_jumping) yDir = jumpForce;
+        }
+
+        if (_OnSlope()) {
+            _moveDirection += Vector3.Cross(slopeHit.normal, slopeHit.transform.forward) * _speed;
         }
 
         _moveDirection.y = yDir;
@@ -103,6 +131,21 @@ public class PlayerControl : MonoBehaviour {
     }
 
     void climbingUpdate() {
+
+    }
+
+    private bool _OnSlope() {
+
+        if (Physics.Raycast(transform.position, Vector3.down, out slopeHit, 1.5f)) {
+
+        }
+
+        if (Vector3.Angle(slopeHit.normal, Vector3.up) > slopeLimit) {
+            return true;
+        } else {
+            return false;
+        }
+
 
     }
 }

@@ -13,13 +13,13 @@ public class CameraLook : MonoBehaviour
     [SerializeField]
     float smoothing = 2.0f;
 
+    [SerializeField]
     private GameObject controller;
 
     private Vector2 mouseLook;
     private Vector2 smoothV;
 
     void Start() {
-        controller = this.transform.parent.gameObject;
         Cursor.lockState = CursorLockMode.Locked;
     }
 
@@ -34,8 +34,8 @@ public class CameraLook : MonoBehaviour
 
         mouseLook.y = Mathf.Clamp(mouseLook.y, -85, 90);
 
-        transform.localRotation = Quaternion.AngleAxis(-mouseLook.y, Vector3.right);
-        controller.transform.localRotation = Quaternion.AngleAxis(mouseLook.x, controller.transform.up);
+        transform.localEulerAngles = new Vector3(-mouseLook.y, mouseLook.x, 0);
+        controller.transform.rotation = Quaternion.Euler(0, transform.rotation.eulerAngles.y, 0);
 
         if (Input.GetKeyDown("escape")) {
             Cursor.lockState = CursorLockMode.None;
