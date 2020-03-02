@@ -24,13 +24,15 @@ public class PlayerControl : MonoBehaviour {
     private CapsuleCollider cc;
 
     //Values//
-    private float _speed, _xMove, _zMove;
-    private bool _grounded, _jumping, _crouching, _canUncrouch;
+    private float _speed, _xMove, _zMove, _lastYpos;
+    private bool _grounded, _jumping, _crouching, _canUncrouch, _falling;
     private Vector3 _moveDirection;
     private RaycastHit slopeHit;
 
     [HideInInspector]
     public Vector3 cameraTarget;
+    [HideInInspector]
+    public bool isMoving, isCrouching;
 
 
     void Awake() {
@@ -44,7 +46,7 @@ public class PlayerControl : MonoBehaviour {
         _xMove = Input.GetAxis("Horizontal");
         _zMove = Input.GetAxis("Vertical");
 
-        _jumping = Input.GetButton("Jump");
+        _jumping = Input.GetButtonUp("Jump");
 
         if (Input.GetButtonDown("Crouch")) {
             if (_crouching) {
@@ -59,12 +61,20 @@ public class PlayerControl : MonoBehaviour {
         _grounded = (Physics.Raycast(transform.position, Vector3.down, out hit, groundedRay));
         _canUncrouch = !(Physics.SphereCast(transform.position, .45f, Vector3.up, out hit, 1f));
 
+
+        //CamAnimate
+        isMoving = ((_xMove != 0 || _zMove != 0) && _grounded);
+        isCrouching = _crouching;
+
         cameraTarget = transform.position;
         cameraTarget.y += _cameraTargetOffset;
 
     }
 
     void FixedUpdate() {
+
+        checkFalling();
+
         //Decide which state to run
         switch (_currentState) {
             case PlayerStates.defaultMove:
@@ -96,7 +106,7 @@ public class PlayerControl : MonoBehaviour {
             _speed = Mathf.Lerp(_speed, targetSpeed, .5f);
         }
 
-
+        //Crouch
         if (_crouching) {
             cc.height = 1;
             groundedRay = .6f;
@@ -117,7 +127,12 @@ public class PlayerControl : MonoBehaviour {
         //Check for gravity and jump
 
         if (!_grounded) {
-            yDir -= gravity * Time.deltaTime;
+            if (!_falling) {
+                yDir -= gravity * Time.deltaTime;
+            } else {
+                yDir -= gravity * Time.deltaTime * 2;
+            }
+
         } else {
             yDir = 0;
             if (_jumping) yDir = jumpForce;
@@ -144,6 +159,15 @@ public class PlayerControl : MonoBehaviour {
 
     void climbingUpdate() {
 
+    }
+
+    void checkFalling() {
+        if(_lastYpos > transform.position.y) {
+            _falling = true;
+        } else {
+            _falling = false;
+        }
+        _lastYpos = transform.position.y;
     }
 
     private bool _OnSlope() {
