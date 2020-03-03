@@ -25,15 +25,16 @@ public class PlayerControl : MonoBehaviour {
 
     //Values//
     private float _speed, _xMove, _zMove, _lastYpos;
-    private bool _grounded, _jumping, _crouching, _canUncrouch, _falling;
-    private Vector3 _moveDirection;
+    private bool _grounded, _jumpButton, _jumpTrigger, _jumping, _crouching, _canUncrouch, _falling, _sprinting;
+    private Vector3 _moveDirection, _launchVelocity;
     private RaycastHit slopeHit;
 
+
+    //Icky code TODO: find a better way to do cam animate//
     [HideInInspector]
     public Vector3 cameraTarget;
     [HideInInspector]
-    public bool isMoving, isCrouching;
-
+    public bool isMoving, isCrouching, isSprinting;
 
     void Awake() {
         rb = this.GetComponent<Rigidbody>();
@@ -45,8 +46,23 @@ public class PlayerControl : MonoBehaviour {
         //Inputs//
         _xMove = Input.GetAxis("Horizontal");
         _zMove = Input.GetAxis("Vertical");
+        _sprinting = Input.GetButton("Sprint");
 
-        _jumping = Input.GetButtonUp("Jump");
+        //Jump Behavior (maybe put in own function?)
+        _jumpButton = Input.GetButton("Jump");
+        if (_grounded && _jumpButton) {
+            _jumpTrigger = true;
+        }
+
+        if (_jumpTrigger && !_grounded) {
+            _jumping = true;
+            _jumpTrigger = false;
+        }
+
+        if (_jumpTrigger && !_jumpButton) {
+            _jumping = true;
+            _jumpTrigger = false;
+        }
 
         if (Input.GetButtonDown("Crouch")) {
             if (_crouching) {
@@ -55,6 +71,7 @@ public class PlayerControl : MonoBehaviour {
                 _crouching = true;
             }
         }
+
 
         //Condition Checks//
         RaycastHit hit;
@@ -65,6 +82,7 @@ public class PlayerControl : MonoBehaviour {
         //CamAnimate
         isMoving = ((_xMove != 0 || _zMove != 0) && _grounded);
         isCrouching = _crouching;
+        isSprinting = _sprinting;
 
         cameraTarget = transform.position;
         cameraTarget.y += _cameraTargetOffset;
@@ -89,6 +107,7 @@ public class PlayerControl : MonoBehaviour {
         }
     }
 
+    //Default behavior for moving, crouching, jumping, etc
     void defaultMoveUpdate() {
 
         //Determine Speed
@@ -98,10 +117,11 @@ public class PlayerControl : MonoBehaviour {
 
             if (_crouching) {
                 targetSpeed = sneakSpeed;
+            } else if (_sprinting) {
+                targetSpeed = runSpeed;
             } else {
                 targetSpeed = walkSpeed;
             }
-
 
             _speed = Mathf.Lerp(_speed, targetSpeed, .5f);
         }
@@ -121,21 +141,29 @@ public class PlayerControl : MonoBehaviour {
         //Add directional movement
         float yDir = _moveDirection.y;
 
-        _moveDirection = (_xMove * transform.right + _zMove * transform.forward).normalized;  //Oreintate based on direction
-        _moveDirection *= _speed;
+        if (_grounded) {
+            _moveDirection = (_xMove * transform.right + _zMove * transform.forward).normalized;  //Oreintate based on direction
+            _moveDirection *= _speed;
+        } else {
+            _moveDirection = _launchVelocity + ((_xMove * transform.right + _zMove * transform.forward).normalized * _speed / 2 );
+        }
 
         //Check for gravity and jump
 
         if (!_grounded) {
             if (!_falling) {
-                yDir -= gravity * Time.deltaTime;
+                yDir -= gravity * Time.fixedDeltaTime;
             } else {
-                yDir -= gravity * Time.deltaTime * 2;
+                yDir -= gravity * Time.fixedDeltaTime * 2;
             }
 
         } else {
             yDir = 0;
-            if (_jumping) yDir = jumpForce;
+            _launchVelocity = Vector3.zero;
+            if (_jumping) {
+                yDir = jumpForce;
+                _launchVelocity = rb.velocity;
+            }
         }
 
         if (_OnSlope()) {
@@ -153,23 +181,28 @@ public class PlayerControl : MonoBehaviour {
 
     }
 
+    //Behavior when hanging on ledge
     void hangingUpdate() {
 
     }
 
+    //Behavior when mantling
     void climbingUpdate() {
 
     }
 
+    //SUMMARY: is player's last ypos greater than current ypos? if so, falling
     void checkFalling() {
         if(_lastYpos > transform.position.y) {
             _falling = true;
+            _jumping = false;
         } else {
             _falling = false;
         }
         _lastYpos = transform.position.y;
     }
 
+    //SUMMARY: is player on slope greater than slope limit? if so, return true
     private bool _OnSlope() {
 
         if (Physics.Raycast(transform.position, Vector3.down, out slopeHit, 1.5f)) {
@@ -184,12 +217,18 @@ public class PlayerControl : MonoBehaviour {
 
 
     }
+
+    //SUMMARY: determing player camera's target offset for things like crouching, jumping, etc
     private float _cameraTargetOffset {
         get {
             if (_crouching) {
-                return (_canUncrouch) ? .5f : .3f;
+                return (_canUncrouch) ? .5f : .3f; 
             } else {
-                return .5f;
+                if (_grounded && _jumpButton) {
+                    return .3f;
+                } else {
+                    return .5f;
+                }
             }
         }
     }

@@ -27,6 +27,9 @@ public class CameraAnimate : MonoBehaviour {
             if (_controller.isCrouching) {
                 _yFrq = 8;
                 _yAmp = .05f;
+            } else if (_controller.isSprinting) {
+                _yFrq = 20;
+                _yAmp = .1f;
             }
         } else {
             _yFrq = 0;
@@ -34,7 +37,7 @@ public class CameraAnimate : MonoBehaviour {
 
         _offset = new Vector3(0, Mathf.Cos(_t * _yFrq) * _yAmp,0);
 
-        transform.position = Vector3.SmoothDamp(transform.position, _controller.cameraTarget + _offset, ref velocity,.05f);
+        transform.position = Vector3.SmoothDamp(transform.position, _controller.cameraTarget + _offset, ref velocity,.08f);
 
     }
 }
